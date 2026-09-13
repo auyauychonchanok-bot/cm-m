@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>เกมจับคู่ เมตร ↔ เซนติเมตร</title>
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+  background:linear-gradient(135deg,#dff7ff,#fff3c7);
+  min-height:100vh;color:#24324a;
+}
+header{text-align:center;padding:22px 15px 10px}
+h1{margin:0;font-size:clamp(28px,5vw,48px);color:#3156a3}
+.subtitle{font-size:18px;margin:7px 0 15px}
+.stats{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+.stat{background:#fff;border-radius:18px;padding:9px 18px;box-shadow:0 5px 15px #0001;font-weight:800}
+button{font:inherit;cursor:pointer;border:0}
+#restart{background:#3156a3;color:#fff;border-radius:15px;padding:10px 18px;font-weight:800}
+.game{max-width:1000px;margin:auto;padding:12px 18px 35px}
+.board{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.card{height:190px;perspective:900px}
+.inner{width:100%;height:100%;position:relative;transition:.55s;transform-style:preserve-3d;cursor:pointer}
+.card.open .inner,.card.matched .inner{transform:rotateY(180deg)}
+.face{
+ position:absolute;inset:0;backface-visibility:hidden;border-radius:24px;
+ display:flex;align-items:center;justify-content:center;flex-direction:column;
+ box-shadow:0 8px 18px #0002;border:4px solid #fff;
+}
+.back{background:linear-gradient(145deg,#6b8cff,#8d6bff);color:#fff;font-size:30px}
+.back small{font-size:15px;margin-top:8px}
+.front{background:#fff;transform:rotateY(180deg);padding:10px}
+.visual{height:105px;width:90%;display:flex;align-items:center;justify-content:center}
+.label{font-size:24px;font-weight:900}
+.cm{color:#e65c54}.m{color:#3156a3}
+.ruler{width:90%;height:42px;border:4px solid #3156a3;border-radius:12px;background:#ffe28a;position:relative}
+.ruler:after{content:"";position:absolute;left:7%;right:7%;top:9px;height:17px;
+background:repeating-linear-gradient(90deg,#3156a3 0 3px,transparent 3px 9px)}
+.tape{width:92px;height:92px;border:18px solid #f3b83f;border-radius:50%;position:relative}
+.tape:after{content:"";position:absolute;width:35px;height:35px;background:#fff;border-radius:50%;left:11px;top:11px}
+.bar{width:90%;height:34px;border-radius:17px;background:#ffbdc1;position:relative}
+.bar:before{content:"";position:absolute;left:0;top:0;height:100%;width:50%;background:#ff6f78;border-radius:17px}
+.meterbar{width:90%;height:34px;border-radius:17px;background:#a9d9ff;position:relative}
+.meterbar:before{content:"";position:absolute;left:0;top:0;height:100%;width:100%;background:#4aa8ff;border-radius:17px}
+.meterbar.three:before{width:100%}
+.cmbar{width:90%;height:34px;border-radius:17px;background:#ffd0d0;position:relative}
+.cmbar:before{content:"";position:absolute;left:0;top:0;height:100%;width:62%;background:#ff7373;border-radius:17px}
+.meter4{width:90%;height:34px;border-radius:17px;background:#c9b5ff}
+.meter4:before{content:"";display:block;width:100%;height:100%;background:#805cff;border-radius:17px}
+.matched .front{background:#d9ffd9;border-color:#5ed36b}
+.shake{animation:shake .4s}
+@keyframes shake{25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-6px)}}
+@keyframes pop{50%{transform:scale(1.1)}}
+.matched{animation:pop .45s}
+#message{text-align:center;min-height:34px;font-size:20px;font-weight:900;margin:12px}
+.overlay{position:fixed;inset:0;background:#26355dcc;display:none;align-items:center;justify-content:center;padding:20px;z-index:10}
+.winbox{background:#fff;border-radius:30px;padding:35px;text-align:center;max-width:450px;box-shadow:0 20px 60px #0005}
+.winbox h2{font-size:40px;margin:0 0 10px;color:#35a653}
+.winbox p{font-size:22px}
+.winbox button{background:#35a653;color:#fff;border-radius:15px;padding:12px 25px;font-weight:900}
+.sparkles{font-size:42px}
+@media(max-width:700px){
+ .board{grid-template-columns:repeat(3,1fr);gap:10px}
+ .card{height:165px}.label{font-size:19px}.visual{height:85px}
+}
+@media(max-width:470px){
+ .board{grid-template-columns:repeat(2,1fr)}
+ .card{height:175px}
+}
+</style>
+</head>
+<body>
+<header>
+<h1>📏 นักสำรวจความยาว</h1>
+<div class="subtitle">เปิดป้าย แล้วจับคู่ <b>เมตร (m)</b> กับ <b>เซนติเมตร (cm)</b></div>
+<div class="stats">
+ <div class="stat">⭐ คะแนน: <span id="score">0</span></div>
+ <div class="stat">🔄 ครั้งที่เปิด: <span id="moves">0</span></div>
+ <div class="stat">⏱️ เวลา: <span id="time">0</span> วินาที</div>
+ <button id="restart">🔁 เริ่มใหม่</button>
+</div>
+</header>
+
+<main class="game">
+<div id="message">จับคู่ให้ครบทั้ง 4 คู่!</div>
+<div class="board" id="board"></div>
+</main>
+
+<div class="overlay" id="overlay">
+ <div class="winbox">
+  <div class="sparkles">🎉 ✨ 🎊</div>
+  <h2>เก่งมาก!</h2>
+  <p>จับคู่ครบทั้ง 4 คู่แล้ว</p>
+  <p>คะแนน <b id="finalScore">0</b> คะแนน<br>ใช้เวลา <b id="finalTime">0</b> วินาที</p>
+  <button id="again">เล่นอีกครั้ง</button>
+ </div>
+</div>
+
+<script>
+const pairs=[
+ {id:1,a:["📏","1 เมตร","m"],b:["🔵","100 เซนติเมตร","cm"]},
+ {id:2,a:["📐","2 เมตร","m"],b:["🔵","200 เซนติเมตร","cm"]},
+ {id:3,a:["🎀","1 เมตร 50 ซม.","m"],b:["🔴","150 เซนติเมตร","cm"]},
+ {id:4,a:["🪢","2 เมตร 50 ซม.","m"],b:["🔴","250 เซนติเมตร","cm"]}
+];
+
+let cards=[],first=null,second=null,lock=false,score=0,moves=0,time=0,timer=null,matched=0;
+
+function visual(type){
+ if(type==="m") return '<div class="meterbar"></div>';
+ if(type==="cm") return '<div class="cmbar"></div>';
+ return '<div class="ruler"></div>';
+}
+function makeCards(){
+ cards=[];
+ pairs.forEach(p=>{
+  cards.push({pair:p.id,side:"a",icon:p.a[0],text:p.a[1],unit:p.a[2]});
+  cards.push({pair:p.id,side:"b",icon:p.b[0],text:p.b[1],unit:p.b[2]});
+ });
+ cards.sort(()=>Math.random()-.5);
+ const board=document.getElementById("board");
+ board.innerHTML="";
+ cards.forEach((c,i)=>{
+  const el=document.createElement("div");
+  el.className="card";el.dataset.i=i;el.dataset.pair=c.pair;
+  el.innerHTML=`<div class="inner">
+   <div class="face back">❓<small>เปิดป้าย</small></div>
+   <div class="face front">
+    <div class="visual">${c.icon} ${visual(c.unit)}</div>
+    <div class="label ${c.unit}">${c.text}</div>
+   </div>
+  </div>`;
+  el.onclick=()=>flip(el);
+  board.appendChild(el);
+ });
+}
+function flip(el){
+ if(lock||el.classList.contains("open")||el.classList.contains("matched"))return;
+ if(!timer){timer=setInterval(()=>{time++;document.getElementById("time").textContent=time},1000)}
+ el.classList.add("open");
+ if(!first){first=el;return}
+ second=el;moves++;document.getElementById("moves").textContent=moves;
+ if(first.dataset.pair===second.dataset.pair){
+  first.classList.add("matched");second.classList.add("matched");
+  matched++;score+=10;document.getElementById("score").textContent=score;
+  document.getElementById("message").textContent="🎉 ถูกต้อง! เก่งมาก";
+  first=null;second=null;
+  if(matched===pairs.length)setTimeout(win,650);
+ }else{
+  lock=true;
+  first.classList.add("shake");second.classList.add("shake");
+  document.getElementById("message").textContent="💡 ยังไม่ใช่ ลองจำภาพแล้วเปิดใหม่";
+  setTimeout(()=>{
+   first.classList.remove("open","shake");second.classList.remove("open","shake");
+   first=null;second=null;lock=false;
+  },850);
+ }
+}
+function win(){
+ clearInterval(timer);timer=null;score+=50;
+ document.getElementById("score").textContent=score;
+ document.getElementById("finalScore").textContent=score;
+ document.getElementById("finalTime").textContent=time;
+ document.getElementById("overlay").style.display="flex";
+}
+function restart(){
+ clearInterval(timer);timer=null;first=second=null;lock=false;
+ score=0;moves=0;time=0;matched=0;
+ ["score","moves","time"].forEach(id=>document.getElementById(id).textContent="0");
+ document.getElementById("message").textContent="จับคู่ให้ครบทั้ง 4 คู่!";
+ document.getElementById("overlay").style.display="none";
+ makeCards();
+}
+document.getElementById("restart").onclick=restart;
+document.getElementById("again").onclick=restart;
+restart();
+</script>
+</body>
+</html>
